@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e2f29">
+<title>دروس | DOROUS</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <img src="icons/icon-192.png" alt="" width="56" height="56">
+  <div><h1>دروس <small>DOROUS</small></h1><p>من الفصحى إلى الدارجة، بصوت وصورة</p></div>
+  <span class="ver" id="ver"></span>
+</header>
+
+<nav>
+  <button class="tab on" data-t="home">الرئيسية</button>
+  <button class="tab" data-t="set">الإعدادات</button>
+</nav>
+
+<main id="home" class="pane">
+  <section>
+    <h2>١. النص الفصيح</h2>
+    <textarea id="src" rows="7" placeholder="ألصق هنا خطبة الجمعة أو الدرس أو الموعظة…"></textarea>
+    <button class="pri" id="bConv">حوّل إلى الدارجة الجزائرية</button>
+  </section>
+  <section>
+    <h2>٢. النص بالدارجة <small>راجعه وعدّله قبل توليد الصوت</small></h2>
+    <textarea id="out" rows="9" placeholder="يظهر هنا النص المحوَّل…"></textarea>
+    <button class="pri" id="bAud">ولّد الصوت</button>
+    <progress id="prog" value="0" max="1" hidden></progress>
+  </section>
+  <section>
+    <h2>٣. الفيديو</h2>
+    <div class="stage"><canvas id="cv"></canvas></div>
+    <div class="row">
+      <button id="bPrev">معاينة</button>
+      <button class="pri" id="bRec">سجّل الفيديو</button>
+      <button id="bStop">إيقاف</button>
+    </div>
+    <a id="dl" class="dl" hidden>تحميل الفيديو</a>
+  </section>
+  <p id="msg" role="status"></p>
+</main>
+
+<main id="set" class="pane" hidden>
+  <section>
+    <h2>مفاتيح Gemini</h2>
+    <label>مفاتيح التحليل (كل مفتاح في سطر)
+      <textarea id="textKeys" rows="4" dir="ltr" spellcheck="false"></textarea></label>
+    <label>مفاتيح الصوت (كل مفتاح في سطر)
+      <textarea id="audioKeys" rows="4" dir="ltr" spellcheck="false"></textarea></label>
+    <button id="bTest">اختبر المفاتيح</button>
+    <p class="hint">استعمل مفاتيح من مشاريع Google مختلفة، فالمفاتيح داخل المشروع الواحد تتقاسم الحصة. تُحفظ في متصفحك فقط.</p>
+  </section>
+  <section>
+    <h2>النماذج والصوت</h2>
+    <label>نموذج التحليل <input id="textModel" dir="ltr"></label>
+    <label>نموذج الصوت <input id="ttsModel" dir="ltr"></label>
+    <label>الصوت
+      <select id="voice"><option>Charon</option><option>Orus</option><option>Fenrir</option><option>Algenib</option><option>Alnilam</option><option>Puck</option></select></label>
+    <label>تعليمة الأسلوب <input id="style"></label>
+    <label>سماع الصوت أثناء التسجيل
+      <select id="monitor"><option value="1">نعم</option><option value="0">لا</option></select></label>
+  </section>
+  <section>
+    <h2>الفيديو</h2>
+    <label>اسم القناة <input id="channel"></label>
+    <label>نص المقدمة <input id="intro"></label>
+    <label>نص الخاتمة <input id="outro"></label>
+    <label>الشكل
+      <select id="aspect"><option value="v">عمودي 9:16 (تيك توك، ريلز، شورتس)</option><option value="h">أفقي 16:9 (يوتيوب، فيسبوك)</option></select></label>
+    <label>لون الخلفية <input id="bg" type="color"></label>
+  </section>
+</main>
+<script src="app.js"></script>
+</body>
+</html>

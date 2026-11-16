@@ -1,0 +1,35 @@
+:root{--bg:#0e2f29;--sf:#153f37;--gold:#d4a94f;--ivory:#f5efdf;--mar:#7b1e2c;--mut:#a9bdb4;color-scheme:dark}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ivory);font:18px/1.7 "Noto Naskh Arabic","Segoe UI",Tahoma,Arial,sans-serif;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+header{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:2px solid var(--gold);position:relative}
+header img{border-radius:50%;border:2px solid var(--gold)}
+h1{margin:0;font-size:26px;line-height:1.2}
+h1 small{font-size:14px;color:var(--gold);letter-spacing:3px;margin-inline-start:6px}
+header p{margin:0;color:var(--mut);font-size:14px}
+.ver{margin-inline-start:auto;background:var(--gold);color:#1c1405;font:700 13px/1 Arial,sans-serif;padding:7px 10px;border-radius:99px;direction:ltr}
+nav{display:flex;gap:6px;padding:12px 16px 0}
+.tab{flex:1;background:none;border:0;border-bottom:3px solid transparent;color:var(--mut);font:inherit;font-weight:700;padding:8px}
+.tab.on{color:var(--ivory);border-color:var(--gold)}
+.pane{max-width:760px;margin:0 auto;padding:12px 16px 40px}
+section{background:var(--sf);border-radius:14px;padding:14px;margin:14px 0}
+h2{margin:0 0 8px;font-size:19px;color:var(--gold)}
+h2 small{color:var(--mut);font-size:13px;font-weight:400;margin-inline-start:6px}
+textarea,input,select{width:100%;background:#0b241f;color:var(--ivory);border:1px solid #2c5a50;border-radius:10px;padding:10px;font:inherit;margin:4px 0 10px}
+input[type=color]{height:46px;padding:4px}
+textarea{resize:vertical}
+label{display:block;font-size:16px;color:var(--mut)}
+button{font:inherit;font-weight:700;border-radius:10px;padding:11px 16px;border:1.5px solid var(--gold);background:none;color:var(--gold);min-height:46px}
+button.pri{background:var(--mar);color:var(--ivory);border-color:var(--mar);width:100%}
+button:disabled{opacity:.5}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.row{display:flex;gap:8px;margin-top:10px}
+.row button{flex:1}
+.row .pri{width:auto;flex:2}
+.stage{background:#08201b;border-radius:10px;padding:8px;display:flex;justify-content:center}
+canvas{max-width:100%;max-height:70vh;height:auto;border-radius:6px}
+progress{width:100%;margin-top:10px;accent-color:var(--gold)}
+.dl{display:block;text-align:center;margin-top:12px;background:var(--gold);color:#1c1405;font-weight:700;padding:12px;border-radius:10px;text-decoration:none}
+#msg{min-height:1.6em;color:var(--gold);text-align:center}
+.hint{font-size:14px;color:var(--mut);margin:0}
+[hidden]{display:none!important}
