@@ -33,3 +33,4 @@ progress{width:100%;margin-top:10px;accent-color:var(--gold)}
 #msg{min-height:1.6em;color:var(--gold);text-align:center}
 .hint{font-size:14px;color:var(--mut);margin:0}
 [hidden]{display:none!important}
+.item{display:flex;align-items:center;gap:8px;background:#0b241f;border-radius:10px;padding:10px;margin:8px 0}.item div{flex:1;min-width:0}.item b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.item small{color:var(--mut)}.item button{min-height:40px;padding:6px 12px}#bNew{margin-bottom:6px}

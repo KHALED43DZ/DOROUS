@@ -19,6 +19,7 @@
 
 <nav>
   <button class="tab on" data-t="home">الرئيسية</button>
+  <button class="tab" data-t="les">الدروس</button>
   <button class="tab" data-t="set">الإعدادات</button>
 </nav>
 
@@ -45,6 +46,10 @@
     <a id="dl" class="dl" hidden>تحميل الفيديو</a>
   </section>
   <p id="msg" role="status"></p>
+</main>
+
+<main id="les" class="pane" hidden>
+  <section><h2>الدروس المحفوظة</h2><p class="hint">تُحفظ الدروس تلقائياً، المكتملة منها والناقصة.</p><button class="pri" id="bNew">درس جديد</button><div id="list"></div></section>
 </main>
 
 <main id="set" class="pane" hidden>
@@ -74,6 +79,8 @@
     <label>نص الخاتمة <input id="outro"></label>
     <label>الشكل
       <select id="aspect"><option value="v">عمودي 9:16 (تيك توك، ريلز، شورتس)</option><option value="h">أفقي 16:9 (يوتيوب، فيسبوك)</option></select></label>
+    <label>حركة الشخصية
+      <select id="motion"><option value="0">ثابتة</option><option value="1">خفيفة</option><option value="2">عادية</option></select></label>
     <label>لون الخلفية <input id="bg" type="color"></label>
   </section>
 </main>

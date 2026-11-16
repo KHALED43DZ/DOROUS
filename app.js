@@ -1,5 +1,5 @@
 "use strict";
-const VERSION = "1.1.1";
+const VERSION = "1.2.0";
 const $ = id => document.getElementById(id);
 $("ver").textContent = "الإصدار " + VERSION;
 
@@ -9,7 +9,7 @@ const DEF = {
   textModel: "gemini-3.8-flash", ttsModel: "gemini-3.8-flash-lite-tts",
   voice: "Charon", style: "تكلّم بهدوء ووقار وببطء، بلهجة جزائرية واضحة يفهمها كبار السن:",
   monitor: "1", channel: "", intro: "درس جديد", outro: "شكراً لكم، اشتركوا وشاركوا الفائدة",
-  aspect: "v", bg: "#0e2f29"
+  aspect: "v", bg: "#0e2f29", motion: "1"
 };
 let cfg = { ...DEF };
 try { Object.assign(cfg, JSON.parse(localStorage.getItem("dorous") || "{}")); } catch (e) {}
@@ -53,8 +53,8 @@ for (const k in DEF) {
 }
 document.querySelectorAll(".tab").forEach(b => b.onclick = () => {
   document.querySelectorAll(".tab").forEach(x => x.classList.toggle("on", x === b));
-  $("home").hidden = b.dataset.t !== "home";
-  $("set").hidden = b.dataset.t !== "set";
+  for (const p of ["home", "les", "set"]) $(p).hidden = b.dataset.t !== p;
+  if (b.dataset.t === "les") renderList();
 });
 const msg = t => $("msg").textContent = t;
 const lines = s => s.split("\n").map(x => x.trim()).filter(Boolean);
@@ -107,49 +107,98 @@ $("bConv").onclick = async () => {
   try {
     const j = await gem("text", cfg.textModel, { systemInstruction: { parts: [{ text: SYS }] }, contents: [{ parts: [{ text: t }] }] });
     $("out").value = j.candidates[0].content.parts.map(p => p.text || "").join("").trim();
-    msg("تم. راجع النص وعدّله إن لزم.");
+    ensureLesson(); await save(); msg("تم وحُفظ الدرس. راجع النص وعدّله إن لزم.");
   } catch (e) { msg("تعذّر التحويل: " + e.message); }
   $("bConv").disabled = false;
 };
 
+/* ---------- حفظ الدروس (IndexedDB) ---------- */
+const idbP = new Promise((res, rej) => { const r = indexedDB.open("dorous", 1); r.onupgradeneeded = () => r.result.createObjectStore("lessons", { keyPath: "id" }); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+const idb = (m, f) => idbP.then(d => new Promise((res, rej) => { const t = d.transaction("lessons", m), q = f(t.objectStore("lessons")); t.oncomplete = () => res(q.result); t.onerror = () => rej(t.error); }));
+let cur = null, sv;
+function ensureLesson() { if (!cur) cur = { id: Date.now(), title: "", src: "", out: "", segs: [], t: Date.now() }; }
+function save() {
+  if (!cur) return Promise.resolve();
+  cur.src = $("src").value; cur.out = $("out").value; cur.t = Date.now();
+  cur.title = (cur.out || cur.src).trim().replace(/\s+/g, " ").slice(0, 40) || "درس بلا عنوان";
+  return idb("readwrite", s => s.put({ id: cur.id, title: cur.title, src: cur.src, out: cur.out, t: cur.t, segs: cur.segs.map(x => ({ text: x.text, voice: x.voice, raw: x.raw })) })).catch(() => {});
+}
+const later = () => { clearTimeout(sv); sv = setTimeout(() => { if ($("src").value.trim() || $("out").value.trim()) { ensureLesson(); save(); } }, 800); };
+$("src").addEventListener("input", later); $("out").addEventListener("input", later);
+function upd() {
+  const s = cur ? cur.segs : [], d = s.filter(x => x.raw).length;
+  $("bAud").textContent = s.length && d < s.length ? `أكمل توليد الصوت (${d} من ${s.length})` : "ولّد الصوت";
+  $("prog").hidden = !s.length; $("prog").value = s.length ? d / s.length : 0;
+}
+function openLesson(l, quiet) {
+  cur = { ...l, segs: l.segs.map(s => ({ ...s })) };
+  $("src").value = l.src; $("out").value = l.out; $("dl").hidden = true; upd(); idle();
+  if (!quiet) document.querySelector('.tab[data-t="home"]').click();
+}
+function newLesson() { cur = null; $("src").value = ""; $("out").value = ""; $("dl").hidden = true; upd(); idle(); document.querySelector('.tab[data-t="home"]').click(); }
+$("bNew").onclick = newLesson;
+async function renderList() {
+  const L = ((await idb("readonly", s => s.getAll()).catch(() => [])) || []).sort((a, b) => b.t - a.t), box = $("list");
+  box.textContent = L.length ? "" : "لا توجد دروس محفوظة بعد.";
+  for (const l of L) {
+    const d = l.segs.filter(s => s.raw).length, n = l.segs.length;
+    const lab = !n ? "نص فقط" : d === n ? "مكتمل" : `ناقص (${d} من ${n})`;
+    const el = document.createElement("div"); el.className = "item";
+    const info = document.createElement("div"), b = document.createElement("b"), sm = document.createElement("small");
+    b.textContent = l.title; sm.textContent = lab + " - " + new Date(l.t).toLocaleDateString("ar");
+    info.append(b, sm);
+    const bo = document.createElement("button"); bo.textContent = "فتح"; bo.onclick = () => openLesson(l);
+    const bd = document.createElement("button"); bd.textContent = "حذف";
+    bd.onclick = async () => { if (confirm("حذف هذا الدرس نهائياً؟")) { await idb("readwrite", s => s.delete(l.id)); if (cur && cur.id === l.id) newLesson(); else renderList(); } };
+    el.append(info, bo, bd); box.append(el);
+  }
+}
+if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+
 /* ---------- توليد الصوت ---------- */
 let ac; const AC = () => ac || (ac = new (window.AudioContext || window.webkitAudioContext)());
-const cache = new Map();
-let segs = [];
 function split(t, max = 260) {
   const parts = t.replace(/[ \t]+/g, " ").split(/(?<=[.!؟?،:؛\n])\s*/).map(s => s.trim()).filter(Boolean);
-  const out = []; let cur = "";
+  const out = []; let c = "";
   for (const p of parts) {
-    if (cur && (cur + " " + p).length > max) { out.push(cur); cur = p; } else cur = cur ? cur + " " + p : p;
+    if (c && (c + " " + p).length > max) { out.push(c); c = p; } else c = c ? c + " " + p : p;
   }
-  if (cur) out.push(cur);
+  if (c) out.push(c);
   return out;
 }
 async function tts(text) {
-  const key = cfg.voice + "|" + cfg.style + "|" + text;
-  if (cache.has(key)) return cache.get(key);
   const j = await gem("audio", cfg.ttsModel, {
     contents: [{ parts: [{ text: cfg.style + "\n" + text }] }],
     generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: cfg.voice } } } }
   });
-  const bin = atob(j.candidates[0].content.parts[0].inlineData.data), n = bin.length >> 1, f = new Float32Array(n);
-  for (let i = 0; i < n; i++) { let v = bin.charCodeAt(2 * i) | (bin.charCodeAt(2 * i + 1) << 8); if (v > 32767) v -= 65536; f[i] = v / 32768; }
-  const buf = AC().createBuffer(1, n, 24000); buf.copyToChannel(f, 0);
-  cache.set(key, buf); return buf;
+  const bin = atob(j.candidates[0].content.parts[0].inlineData.data), n = bin.length >> 1, u = new Uint8Array(n * 2);
+  for (let i = 0; i < n * 2; i++) u[i] = bin.charCodeAt(i);
+  return u.buffer;
 }
+const pcm = ab => {
+  const i = new Int16Array(ab), f = new Float32Array(i.length);
+  for (let k = 0; k < i.length; k++) f[k] = i[k] / 32768;
+  const b = AC().createBuffer(1, f.length, 24000); b.copyToChannel(f, 0); return b;
+};
 $("bAud").onclick = async () => {
   const parts = split($("out").value.trim());
   if (!parts.length) return msg("لا يوجد نص بالدارجة");
-  $("bAud").disabled = true; $("prog").hidden = false; $("prog").value = 0; segs = [];
-  try {
-    for (let i = 0; i < parts.length; i++) {
-      msg(`توليد الصوت ${i + 1} من ${parts.length}…`);
-      segs.push({ text: parts[i], buf: await tts(parts[i]) });
-      $("prog").value = (i + 1) / parts.length;
+  ensureLesson();
+  const prior = new Map(cur.segs.map(s => [s.text + "|" + s.voice, s]));
+  cur.segs = parts.map(t => prior.get(t + "|" + cfg.voice) || { text: t, voice: cfg.voice, raw: null });
+  await save(); upd();
+  $("bAud").disabled = true; let err;
+  for (let i = 0; i < cur.segs.length; i++) {
+    const s = cur.segs[i];
+    if (!s.raw) {
+      msg(`توليد الصوت ${i + 1} من ${cur.segs.length}…`);
+      try { s.raw = await tts(s.text); } catch (e) { err = e; break; }
+      await save(); upd();
     }
-    msg("الصوت جاهز. اضغط معاينة أو سجّل الفيديو.");
-  } catch (e) { segs = []; msg("تعذّر توليد الصوت: " + e.message); }
-  $("bAud").disabled = false;
+  }
+  $("bAud").disabled = false; upd();
+  const d = cur.segs.filter(s => s.raw).length;
+  msg(err ? `توقف التوليد عند ${d} من ${cur.segs.length} (${String(err.message).slice(0, 120)}). تم حفظ ما اكتمل، اضغط «أكمل توليد الصوت» لاحقاً.` : "الصوت جاهز ومحفوظ. اضغط معاينة أو سجّل الفيديو.");
 };
 
 /* ---------- الرسم والشخصية ---------- */
@@ -157,6 +206,13 @@ const cv = $("cv"), g = cv.getContext("2d");
 const imgO = new Image(), imgC = new Image();
 imgO.src = "assets/open.png"; imgC.src = "assets/closed.png";
 const st = { text: "", talk: false, lvl: 0, t0: 0, dur: 1, pages: [] };
+const OFF = [[0.0, 0.0], [2.5, -0.2], [2.1, -0.2], [4.3, -0.2], [6.6, -4.4], [6.2, -4.5], [4.4, -4.6], [5.0, -4.4], [6.8, -1.4], [5.9, -1.4], [4.7, -1.5], [5.2, -1.4]];
+let fi = 0, ft = 0;
+function frameIdx(t) {
+  const tg = st.talk ? Math.round(st.lvl * 11) : 0;
+  if (tg !== fi && t - ft > 110) { fi += Math.sign(tg - fi) * Math.min(2, Math.abs(tg - fi)); ft = t; }
+  return fi;
+}
 let running = false, stopFlag = false, curSrc = null;
 
 function wrap(t, w) {
@@ -177,14 +233,9 @@ function draw(t) {
   g.fillStyle = gr; g.fillRect(0, 0, W, H);
   g.strokeStyle = "#d4a94f"; g.lineWidth = 10; g.strokeRect(24, 24, W - 48, H - 48);
   const ch = H * (v ? 0.5 : 0.7), cw = ch * 0.75, cx = W / 2 - cw / 2, cy = H * (v ? 0.1 : 0.06);
-  const idx = st.talk ? Math.round(st.lvl * 11) : 0;
-  const blink = t % 3800 < 150;
-  const im = blink ? imgC : imgO;
-  if (im.complete && im.naturalWidth) {
-    g.save(); g.translate(W / 2, cy + ch); g.rotate(Math.sin(t / 900) * 0.012); g.translate(-W / 2, -(cy + ch));
-    g.drawImage(im, (idx % 4) * 256 + 2, Math.floor(idx / 4) * 341.33 + 2, 252, 337, cx, cy + Math.sin(t / 650) * 6, cw, ch);
-    g.restore();
-  }
+  const idx = frameIdx(t), im = t % 4200 < 140 ? imgC : imgO;
+  const m = [0, 0.35, 1][+cfg.motion || 0], k = cw / 252, o = OFF[idx];
+  if (im.complete && im.naturalWidth) g.drawImage(im, (idx % 4) * 256 + 2, Math.floor(idx / 4) * 341.33 + 2, 252, 337, cx - o[0] * k, cy - o[1] * k + Math.sin(t / 1500) * 5 * m, cw, ch);
   const py = cy + ch - 10, ph = H - 60 - py;
   g.fillStyle = "rgba(8,32,27,.94)"; g.beginPath(); g.roundRect(48, py, W - 96, ph, 28); g.fill();
   g.strokeStyle = "#d4a94f"; g.lineWidth = 4; g.stroke();
@@ -199,13 +250,15 @@ function draw(t) {
   ls.forEach((l, i) => g.fillText(l, W / 2, y0 + i * lh));
 }
 function size() { const v = cfg.aspect === "v"; cv.width = v ? 1080 : 1920; cv.height = v ? 1920 : 1080; }
-function idle() { if (running) return; size(); st.talk = false; st.text = "دروس"; draw(0); }
+function idle() { if (running) return; fi = 0; size(); st.talk = false; st.text = "دروس"; draw(0); }
 imgO.onload = imgC.onload = idle; idle();
 
 /* ---------- التشغيل والتسجيل ---------- */
 async function run(rec) {
   if (running) return;
-  if (!segs.length) return msg("ولّد الصوت أولاً");
+  const segs = cur ? cur.segs : [];
+  if (!segs.length || segs.some(s => !s.raw)) return msg("الصوت غير مكتمل، ولّده أو أكمله أولاً");
+  segs.forEach(s => { s.buf = s.buf || pcm(s.raw); });
   running = true; stopFlag = false; $("dl").hidden = true; size();
   const ctx = AC(); await ctx.resume();
   const an = ctx.createAnalyser(); an.fftSize = 1024;
@@ -225,7 +278,7 @@ async function run(rec) {
     if (!running) return;
     an.getByteTimeDomainData(data);
     let s = 0; for (const x of data) { const d = (x - 128) / 128; s += d * d; }
-    st.lvl = st.lvl * 0.55 + Math.min(1, Math.sqrt(s / data.length) * 5) * 0.45;
+    st.lvl = st.lvl * 0.75 + Math.min(1, Math.sqrt(s / data.length) * 5) * 0.25;
     draw(t); requestAnimationFrame(loop);
   })(0);
   const card = async (text, ms) => { st.talk = false; st.text = text; await sleep(ms); };
@@ -259,4 +312,5 @@ $("bPrev").onclick = () => run(false);
 $("bRec").onclick = () => run(true);
 $("bStop").onclick = () => { stopFlag = true; try { curSrc && curSrc.stop(); } catch (e) {} };
 
+idb("readonly", s => s.getAll()).then(L => { if (L && L.length) openLesson(L.sort((a, b) => b.t - a.t)[0], true); }).catch(() => {});
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
