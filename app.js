@@ -1,5 +1,5 @@
 "use strict";
-const VERSION = "1.1.0";
+const VERSION = "1.1.1";
 const $ = id => document.getElementById(id);
 $("ver").textContent = "الإصدار " + VERSION;
 
@@ -13,6 +13,8 @@ const DEF = {
 };
 let cfg = { ...DEF };
 try { Object.assign(cfg, JSON.parse(localStorage.getItem("dorous") || "{}")); } catch (e) {}
+const OKM = /^[a-z][a-z0-9.\-]*$/i;
+for (const k of ["textModel", "ttsModel"]) { cfg[k] = String(cfg[k] || "").trim().replace(/^models\//, ""); if (!OKM.test(cfg[k])) cfg[k] = DEF[k]; }
 const MODELS = {
   textModel: [
     ["gemini-4-carbon", "Gemini 4 Carbon (مدفوع)"],
@@ -63,6 +65,8 @@ const rot = { text: 0, audio: 0 };
 async function gem(kind, model, body) {
   const keys = lines(cfg[kind + "Keys"]);
   if (!keys.length) throw new Error("أضف مفتاحاً واحداً على الأقل في الإعدادات");
+  model = String(model || "").trim().replace(/^models\//, "");
+  if (!OKM.test(model)) throw new Error("اسم النموذج غير صالح (" + model + ")، اختره من الإعدادات");
   let last;
   for (let r = 0; r < keys.length * 2; r++) {
     const i = rot[kind] % keys.length;
@@ -73,7 +77,8 @@ async function gem(kind, model, body) {
         body: JSON.stringify(body)
       });
       if (res.ok) return await res.json();
-      last = new Error(res.status + " " + (await res.text()).slice(0, 140));
+      let tx = await res.text(); try { tx = JSON.parse(tx).error.message; } catch (e) {}
+      last = new Error(res.status + " [" + model + "] " + String(tx).slice(0, 220));
     } catch (e) { last = e; }
     rot[kind]++;
     if (r % keys.length === keys.length - 1) { msg("الحصة ممتلئة، انتظار قصير…"); await sleep(5000); }
