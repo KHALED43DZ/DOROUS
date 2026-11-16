@@ -1,21 +1,49 @@
 "use strict";
-const VERSION = "1.0.0";
+const VERSION = "1.1.0";
 const $ = id => document.getElementById(id);
 $("ver").textContent = "الإصدار " + VERSION;
 
 /* ---------- الإعدادات ---------- */
 const DEF = {
   textKeys: "", audioKeys: "",
-  textModel: "gemini-2.5-flash", ttsModel: "gemini-2.5-flash-preview-tts",
+  textModel: "gemini-3.8-flash", ttsModel: "gemini-3.8-flash-lite-tts",
   voice: "Charon", style: "تكلّم بهدوء ووقار وببطء، بلهجة جزائرية واضحة يفهمها كبار السن:",
   monitor: "1", channel: "", intro: "درس جديد", outro: "شكراً لكم، اشتركوا وشاركوا الفائدة",
   aspect: "v", bg: "#0e2f29"
 };
 let cfg = { ...DEF };
 try { Object.assign(cfg, JSON.parse(localStorage.getItem("dorous") || "{}")); } catch (e) {}
+const MODELS = {
+  textModel: [
+    ["gemini-4-carbon", "Gemini 4 Carbon (مدفوع)"],
+    ["gemini-4-argon", "Gemini 4 Argon (مدفوع)"],
+    ["gemini-3.8-flash", "Gemini 3.8 Flash"],
+    ["gemini-3.6-flash", "Gemini 3.6 Flash (مدفوع)"],
+    ["gemini-3.5-flash-lite", "Gemini 3.5 Flash Lite"],
+    ["gemini-3.1-pro-preview", "Gemini 3.1 Pro Preview"],
+    ["gemini-3.1-flash-lite", "Gemini 3.1 Flash Lite"],
+    ["gemini-3-flash-preview", "Gemini 3 Flash Preview (مدفوع)"]
+  ],
+  ttsModel: [
+    ["gemini-3.8-flash-lite-tts", "Gemini 3.8 Flash Lite TTS"],
+    ["gemini-3.1-flash-tts-preview", "Gemini 3.1 Flash TTS Preview"],
+    ["gemini-2.5-flash-preview-tts", "Gemini 2.5 Flash TTS (قديم)"]
+  ]
+};
+const addOpt = (el, v, l) => { const o = document.createElement("option"); o.value = v; o.textContent = l; el.insertBefore(o, el.lastElementChild && el.lastElementChild.value === "__custom__" ? el.lastElementChild : null); };
+for (const k in MODELS) {
+  const el = $(k);
+  MODELS[k].forEach(([v, l]) => addOpt(el, v, l));
+  const c = document.createElement("option"); c.value = "__custom__"; c.textContent = "نموذج آخر (اكتب الاسم)…"; el.appendChild(c);
+  if (cfg[k] && !MODELS[k].some(m => m[0] === cfg[k])) addOpt(el, cfg[k], cfg[k]);
+}
 for (const k in DEF) {
   const el = $(k); el.value = cfg[k];
   el.addEventListener("input", () => {
+    if (el.value === "__custom__") {
+      const v = (prompt("اكتب اسم النموذج بالضبط:") || "").trim();
+      if (v) { addOpt(el, v, v); el.value = v; } else el.value = cfg[k];
+    }
     cfg[k] = el.value;
     try { localStorage.setItem("dorous", JSON.stringify(cfg)); } catch (e) {}
     if (k === "aspect" || k === "bg") idle();
